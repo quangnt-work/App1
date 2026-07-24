@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { Flame, Target, Award, CalendarDays, ChevronRight } from 'lucide-react';
+import { Flame, Target, Award, CalendarDays, ChevronRight, CheckCircle2 } from 'lucide-react';
 import type { DashboardStats, LessonWithProgress } from '@/lib/types/database';
 import { useLessonsWithProgress } from '@/lib/queries/lessons';
 

@@ -3,15 +3,16 @@
 import { useRef, useState, useCallback } from 'react';
 import type { SpeechResult } from '@/lib/types/database';
 
-// Extend Window for webkit prefix
+// Type declarations for Web Speech API
 declare global {
   interface Window {
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
   }
 }
 
 export function useSpeechRecognition(lang: string = 'ru-RU') {
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   const [isListening, setIsListening] = useState(false);
   const [result, setResult] = useState<SpeechResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export function useSpeechRecognition(lang: string = 'ru-RU') {
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: any) => {
       const speechResult = event.results[0][0];
       setResult({
         transcript: speechResult.transcript,
@@ -51,7 +52,7 @@ export function useSpeechRecognition(lang: string = 'ru-RU') {
       setIsListening(false);
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    recognition.onerror = (event: any) => {
       let message = 'Lỗi nhận diện giọng nói';
       switch (event.error) {
         case 'no-speech':

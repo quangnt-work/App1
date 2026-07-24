@@ -78,7 +78,7 @@ export function ListenImageExercise({ phrase, questionData, onComplete }: Listen
       
       {hasAnswered && (
         <div className="mt-8 text-center animate-fade-in-up">
-          <p className="text-lg font-bold mb-1">{phrase.russian_word || phrase.russian_text}</p>
+          <p className="text-lg font-bold mb-1">{phrase.russian_text}</p>
           <p className="text-muted-foreground">{phrase.translation}</p>
         </div>
       )}
