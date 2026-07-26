@@ -34,6 +34,7 @@ export default function RootLayout({
     <html
       lang="vi"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={`${inter.variable} ${geistMono.variable}`}
     >
       <body className="min-h-dvh flex flex-col antialiased">

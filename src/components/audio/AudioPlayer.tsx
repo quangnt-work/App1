@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
-import { Play, Pause, RotateCcw, FastForward } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2 } from 'lucide-react';
 import { formatTime } from '@/lib/utils/scoring';
 
 interface AudioPlayerProps {
   url: string;
+  russianText?: string; // Text tiếng Nga để fallback SpeechSynthesis
   autoPlay?: boolean;
   onEnded?: () => void;
   showControls?: boolean;
@@ -14,11 +15,12 @@ interface AudioPlayerProps {
 
 export function AudioPlayer({
   url,
+  russianText,
   autoPlay = false,
   onEnded,
   showControls = true,
 }: AudioPlayerProps) {
-  const [hasStarted, setHasStarted] = useState(autoPlay);
+  const [hasStarted, setHasStarted] = useState(false);
   
   const {
     play,
@@ -26,6 +28,7 @@ export function AudioPlayer({
     replay,
     setSpeed,
     isPlaying,
+    isLoading,
     playbackRate,
     currentTime,
     duration,
@@ -33,22 +36,19 @@ export function AudioPlayer({
     onEnded,
   });
 
-  // Handle initial play if autoPlay is true (may require user interaction in some browsers)
-  // In a real app, we might need a "Start" button before autoPlay works.
-
-  const handlePlayPause = () => {
-    if (!hasStarted) {
+  const handlePlayPause = async () => {
+    if (!hasStarted || (!isPlaying && currentTime === 0)) {
       setHasStarted(true);
-      play(url);
+      await play(url, russianText);
     } else if (isPlaying) {
       pause();
     } else {
-      play(); // Resume
+      await play(); // Resume / replay
     }
   };
 
-  const handleReplay = () => {
-    replay();
+  const handleReplay = async () => {
+    await replay();
   };
 
   const toggleSpeed = () => {
@@ -59,11 +59,19 @@ export function AudioPlayer({
     return (
       <button
         onClick={handlePlayPause}
-        className="w-16 h-16 rounded-full bg-primary text-primary-foreground
-                   flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
+        disabled={isLoading}
+        className={`w-16 h-16 rounded-full bg-primary text-primary-foreground
+                   flex items-center justify-center hover:scale-105 transition-transform shadow-lg
+                   disabled:opacity-70 ${isPlaying ? 'animate-pulse' : ''}`}
         aria-label={isPlaying ? 'Tạm dừng' : 'Phát âm thanh'}
       >
-        {isPlaying ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
+        {isLoading ? (
+          <div className="w-6 h-6 rounded-full border-3 border-white border-t-transparent animate-spin" />
+        ) : isPlaying ? (
+          <Volume2 size={32} className="animate-pulse" />
+        ) : (
+          <Play size={32} className="ml-1" />
+        )}
       </button>
     );
   }
@@ -73,7 +81,7 @@ export function AudioPlayer({
       <div className="flex items-center gap-4">
         <button
           onClick={handleReplay}
-          disabled={!hasStarted}
+          disabled={!hasStarted || isLoading}
           className="p-3 rounded-full bg-muted text-muted-foreground hover:bg-border transition-colors disabled:opacity-50"
           aria-label="Phát lại từ đầu"
         >
@@ -82,11 +90,19 @@ export function AudioPlayer({
 
         <button
           onClick={handlePlayPause}
-          className="w-16 h-16 rounded-full bg-primary text-primary-foreground
-                     flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
+          disabled={isLoading}
+          className={`w-16 h-16 rounded-full bg-primary text-primary-foreground
+                     flex items-center justify-center hover:scale-105 transition-transform shadow-lg
+                     disabled:opacity-70`}
           aria-label={isPlaying ? 'Tạm dừng' : 'Phát âm thanh'}
         >
-          {isPlaying ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
+          {isLoading ? (
+            <div className="w-6 h-6 rounded-full border-3 border-white border-t-transparent animate-spin" />
+          ) : isPlaying ? (
+            <Pause size={32} />
+          ) : (
+            <Play size={32} className="ml-1" />
+          )}
         </button>
 
         <button

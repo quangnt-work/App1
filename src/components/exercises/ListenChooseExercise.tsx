@@ -31,7 +31,7 @@ export function ListenChooseExercise({ phrase, questionData, onComplete }: Liste
     <div className="max-w-md mx-auto w-full flex flex-col items-center animate-fade-in">
       <div className="mb-10 text-center">
         <h2 className="text-xl font-bold mb-6">Nghe và chọn đáp án đúng</h2>
-        <AudioPlayer url={phrase.audio_url} autoPlay showControls={false} />
+        <AudioPlayer url={phrase.audio_url} russianText={phrase.russian_text} autoPlay showControls={false} />
       </div>
 
       <div className="w-full grid gap-3">

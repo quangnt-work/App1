@@ -40,7 +40,7 @@ export default function ProgressPage() {
         .eq('user_id', user.id);
 
       const avgScore = attempts && attempts.length > 0
-        ? Math.round((attempts.reduce((sum, a) => sum + a.accuracy_score, 0) / attempts.length) * 100)
+        ? Math.round(attempts.reduce((sum, a) => sum + a.accuracy_score, 0) / attempts.length)
         : 0;
 
       return {

@@ -18,6 +18,27 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const translateError = (message: string): string => {
+    const lower = message.toLowerCase();
+    if (lower.includes('is invalid')) {
+      // Extract the field name for context
+      if (lower.includes('email')) return 'Địa chỉ email không hợp lệ. Vui lòng sử dụng email thật.';
+      if (lower.includes('password')) return 'Mật khẩu không hợp lệ.';
+      return 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.';
+    }
+    if (lower.includes('already registered') || lower.includes('already been registered'))
+      return 'Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.';
+    if (lower.includes('rate limit') || lower.includes('too many requests'))
+      return 'Bạn đã thử quá nhiều lần. Vui lòng đợi vài phút rồi thử lại.';
+    if (lower.includes('weak password') || lower.includes('at least'))
+      return 'Mật khẩu quá yếu. Hãy dùng ít nhất 6 ký tự, bao gồm chữ và số.';
+    if (lower.includes('signup is disabled'))
+      return 'Chức năng đăng ký đang tạm thời bị tắt. Liên hệ quản trị viên.';
+    if (lower.includes('network') || lower.includes('fetch'))
+      return 'Lỗi kết nối mạng. Vui lòng kiểm tra internet và thử lại.';
+    return message; // Fallback: show original message
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -40,7 +61,7 @@ export default function RegisterPage() {
     });
 
     if (authError) {
-      setError(authError.message);
+      setError(translateError(authError.message));
       setLoading(false);
       return;
     }

@@ -29,7 +29,7 @@ export function ListenImageExercise({ phrase, questionData, onComplete }: Listen
     <div className="max-w-2xl mx-auto w-full flex flex-col items-center animate-fade-in">
       <div className="mb-8 text-center">
         <h2 className="text-xl font-bold mb-6">Nghe và chọn hình ảnh phù hợp</h2>
-        <AudioPlayer url={phrase.audio_url} autoPlay showControls={false} />
+        <AudioPlayer url={phrase.audio_url} russianText={phrase.russian_text} autoPlay showControls={false} />
       </div>
 
       <div className="w-full grid grid-cols-2 gap-4">

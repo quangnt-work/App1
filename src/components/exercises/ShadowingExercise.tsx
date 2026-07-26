@@ -65,7 +65,7 @@ export function ShadowingExercise({ phrase, questionData, onComplete }: Shadowin
         </div>
 
         {/* Audio Player */}
-        <AudioPlayer url={phrase.audio_url} autoPlay />
+        <AudioPlayer url={phrase.audio_url} russianText={phrase.russian_text} autoPlay />
       </div>
 
       {/* Recording Section */}

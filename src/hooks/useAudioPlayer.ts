@@ -9,90 +9,186 @@ interface UseAudioPlayerOptions {
 
 export function useAudioPlayer(options?: UseAudioPlayerOptions) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  // Clean up on unmount
+  // Lưu text tiếng Nga để dùng SpeechSynthesis
+  const textRef = useRef<string>('');
+  const urlRef = useRef<string>('');
+
   useEffect(() => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
       }
+      if (typeof window !== 'undefined') {
+        window.speechSynthesis?.cancel();
+      }
     };
   }, []);
 
-  const load = useCallback(
-    (url: string) => {
-      // Clean up previous audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-      }
+  /**
+   * Phát âm bằng SpeechSynthesis (giọng đọc trình duyệt)
+   */
+  const speakText = useCallback(async (text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      console.error('SpeechSynthesis không được hỗ trợ');
+      return;
+    }
 
-      const audio = new Audio(url);
-      audio.playbackRate = playbackRate;
-      audio.preload = 'auto';
+    // Cancel utterance cũ
+    window.speechSynthesis.cancel();
 
-      audio.addEventListener('loadstart', () => setIsLoading(true));
-      audio.addEventListener('canplaythrough', () => setIsLoading(false));
-      audio.addEventListener('ended', () => {
+    return new Promise<void>((resolve) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ru-RU';
+      utterance.rate = playbackRate;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      utterance.onstart = () => {
+        setIsPlaying(true);
+        setIsLoading(false);
+      };
+
+      utterance.onend = () => {
         setIsPlaying(false);
         setCurrentTime(0);
         options?.onEnded?.();
-      });
-      audio.addEventListener('error', () => {
+        resolve();
+      };
+
+      utterance.onerror = () => {
         setIsPlaying(false);
         setIsLoading(false);
-      });
-      audio.addEventListener('timeupdate', () => {
-        setCurrentTime(audio.currentTime);
-        setDuration(audio.duration || 0);
-        options?.onTimeUpdate?.(audio.currentTime, audio.duration || 0);
-      });
-      audio.addEventListener('loadedmetadata', () => {
-        setDuration(audio.duration || 0);
-      });
+        resolve();
+      };
 
-      audioRef.current = audio;
-    },
-    [playbackRate, options]
-  );
+      utteranceRef.current = utterance;
+      setIsLoading(true);
+      window.speechSynthesis.speak(utterance);
+    });
+  }, [playbackRate, options]);
 
-  const play = useCallback(
-    async (url?: string) => {
-      if (url) load(url);
-      if (!audioRef.current) return;
+  /**
+   * Thử phát audio file, nếu thất bại thì fallback SpeechSynthesis
+   */
+  const playAudioUrl = useCallback(async (url: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const audio = new Audio();
 
-      try {
-        await audioRef.current.play();
-        setIsPlaying(true);
-      } catch (err) {
-        console.error('Audio playback failed:', err);
-        setIsPlaying(false);
+      const cleanup = () => {
+        audio.removeEventListener('canplaythrough', onReady);
+        audio.removeEventListener('error', onError);
+      };
+
+      const onReady = async () => {
+        cleanup();
+        audioRef.current = audio;
+
+        audio.addEventListener('ended', () => {
+          setIsPlaying(false);
+          setCurrentTime(0);
+          options?.onEnded?.();
+        });
+        audio.addEventListener('timeupdate', () => {
+          setCurrentTime(audio.currentTime);
+          setDuration(audio.duration || 0);
+        });
+
+        try {
+          await audio.play();
+          setIsPlaying(true);
+          setIsLoading(false);
+          setDuration(audio.duration || 0);
+          resolve(true);
+        } catch {
+          resolve(false);
+        }
+      };
+
+      const onError = () => {
+        cleanup();
+        resolve(false);
+      };
+
+      // Timeout: nếu sau 2s vẫn chưa load xong → fallback
+      setTimeout(() => {
+        cleanup();
+        resolve(false);
+      }, 2000);
+
+      audio.addEventListener('canplaythrough', onReady);
+      audio.addEventListener('error', onError);
+      audio.playbackRate = playbackRate;
+      audio.preload = 'auto';
+      audio.src = url;
+    });
+  }, [playbackRate, options]);
+
+  /**
+   * Play chính: thử URL trước, fallback SpeechSynthesis
+   * Hỗ trợ 2 cách gọi:
+   *   play(url)            — phát URL (auto-extract text nếu là TTS URL)
+   *   play(url, russianText) — phát URL, fallback bằng text chỉ định
+   */
+  const play = useCallback(async (url?: string, russianText?: string) => {
+    if (url) {
+      urlRef.current = url;
+      // Extract text từ TTS URL nếu có (e.g. ...&q=Привет)
+      if (russianText) {
+        textRef.current = russianText;
+      } else {
+        try {
+          const urlObj = new URL(url);
+          textRef.current = urlObj.searchParams.get('q') || '';
+        } catch {
+          textRef.current = '';
+        }
       }
-    },
-    [load]
-  );
+    }
+
+    setIsLoading(true);
+
+    // Bước 1: Thử phát audio URL
+    if (urlRef.current && !urlRef.current.includes('placeholder')) {
+      const success = await playAudioUrl(urlRef.current);
+      if (success) return;
+    }
+
+    // Bước 2: Fallback → SpeechSynthesis
+    if (textRef.current) {
+      await speakText(textRef.current);
+    } else {
+      setIsLoading(false);
+      console.error('Không có audio URL hoặc text để phát');
+    }
+  }, [playAudioUrl, speakText]);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis?.cancel();
+    }
     setIsPlaying(false);
   }, []);
 
   const replay = useCallback(async () => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = 0;
-    try {
-      await audioRef.current.play();
-      setIsPlaying(true);
-    } catch (err) {
-      console.error('Audio replay failed:', err);
+    // Dừng tất cả
+    audioRef.current?.pause();
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis?.cancel();
     }
-  }, []);
+    setCurrentTime(0);
+
+    // Phát lại
+    await play();
+  }, [play]);
 
   const setSpeed = useCallback((rate: number) => {
     setPlaybackRate(rate);
@@ -103,6 +199,9 @@ export function useAudioPlayer(options?: UseAudioPlayerOptions) {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+    }
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis?.cancel();
     }
     setIsPlaying(false);
     setCurrentTime(0);
